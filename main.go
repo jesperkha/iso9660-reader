@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/jesperkha/iso-reader/reader"
 )
@@ -11,16 +10,12 @@ import (
 // https://wiki.osdev.org/ISO_9660
 
 func main() {
-	f, err := os.Open("output.iso")
+	fs, err := reader.ReadDisk("output.iso")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
 
-	fs, err := reader.ReadDisk(f)
-	if err != nil {
-		log.Fatal(err)
-	}
+	defer fs.Close()
 
 	file, err := fs.ReadFile("folder/myfile.txt")
 	if err != nil {

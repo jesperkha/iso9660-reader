@@ -69,7 +69,12 @@ type PrimaryDescriptor struct {
 
 // ReadDisk reads the primary descriptor from the disk. Returns a file system
 // handler for reading the rest of the files and directories.
-func ReadDisk(file *os.File) (fs *FileSystem, err error) {
+func ReadDisk(name string) (fs *FileSystem, err error) {
+	file, err := os.Open(name)
+	if err != nil {
+		return fs, err
+	}
+
 	fs = &FileSystem{file: file, cachedDirs: make(map[int][]*DirectoryRecord)}
 
 	// Check for 'CD0001' identifier that is always found in the first sector
@@ -118,4 +123,9 @@ func (fs *FileSystem) seekFieldValue(offset int64, length int, datatype int) int
 	}
 
 	return nil
+}
+
+// Closes file in use. Cannot perform read operations after close
+func (fs *FileSystem) Close() {
+	fs.file.Close()
 }
