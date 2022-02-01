@@ -18,8 +18,7 @@ var (
 // desired size of 2048 bytes per sector.
 //
 // All diectories have two constant record enties. One is the "./" path and
-// the other is the "../" path, in that order. They have the names "\0" and
-// "\1" (bytes 0 and 1).
+// the other is the "../" path, in that order.
 type DirectoryRecord struct {
 	// Size of this record in bytes
 	Size int
@@ -40,7 +39,7 @@ type DirectoryRecord struct {
 //
 // Path must be formatted as "path/to/file.ext" or "path/to/dir". Relative or absolute
 // paths are not accepted and the target will not be found.
-func (fs *FileSystem) FindDirectory(path string) (dirs []DirectoryRecord, err error) {
+func (fs *FileSystem) ReadDirectory(path string) (dirs []*DirectoryRecord, err error) {
 	// Get position of root directory. First two entries are the default ./ and ../
 	// and both have a length of 34 bytes.
 	rootPos := fs.Descriptor.RootDirLocation
@@ -49,7 +48,7 @@ func (fs *FileSystem) FindDirectory(path string) (dirs []DirectoryRecord, err er
 
 	for _, dirname := range pathSplit {
 		// Check records to match dirname and continue to subfolder
-		dirs, err = fs.ReadDirectory(location)
+		dirs, err = fs.readDirectoryRecords(location)
 		if err != nil {
 			return dirs, err
 		}
@@ -57,7 +56,7 @@ func (fs *FileSystem) FindDirectory(path string) (dirs []DirectoryRecord, err er
 		var target *DirectoryRecord
 		for _, r := range dirs {
 			if r.Name == dirname {
-				target = &r
+				target = r
 				break
 			}
 		}
@@ -70,17 +69,22 @@ func (fs *FileSystem) FindDirectory(path string) (dirs []DirectoryRecord, err er
 	}
 
 	// Return final read of the target directory
-	return fs.ReadDirectory(location)
+	return fs.readDirectoryRecords(location)
 }
 
-// ReadDirectory reads a list of directory records from the given sector number (from 0).
+// readDirectoryRecords reads a list of directory records from the given sector number (from 0).
 // Records spanning across multiple sectors are allowed. Returns a list of records including
 // the ./ and ../ entries. Todo: allow multi-sector records
-func (fs *FileSystem) ReadDirectory(location int) (dirs []DirectoryRecord, err error) {
+func (fs *FileSystem) readDirectoryRecords(location int) (dirs []*DirectoryRecord, err error) {
 	sector := make([]byte, blockSize)
-	_, err = fs.File.ReadAt(sector, int64(location*blockSize))
+	_, err = fs.file.ReadAt(sector, int64(location*blockSize))
 	if err != nil {
 		return dirs, err
+	}
+
+	// Avoid checking directory more than once
+	if cached, ok := fs.cachedDirs[location]; ok {
+		return cached, err
 	}
 
 	// Verify there are records in this sector. Not foolproof but good enough.
@@ -88,7 +92,7 @@ func (fs *FileSystem) ReadDirectory(location int) (dirs []DirectoryRecord, err e
 		return dirs, ErrNotADirectory
 	}
 
-	dirs = []DirectoryRecord{}
+	dirs = []*DirectoryRecord{}
 	index := 0
 	for index < blockSize {
 		length := int(sector[index])
@@ -101,15 +105,21 @@ func (fs *FileSystem) ReadDirectory(location int) (dirs []DirectoryRecord, err e
 		index += length
 
 		// Read needed field values
-		record := DirectoryRecord{
+		record := &DirectoryRecord{
 			Size:       length,
 			ExtentPos:  int(binary.LittleEndian.Uint32(interval[2:6])),
 			ExtentSize: int(binary.LittleEndian.Uint32(interval[10:14])),
 			Flag:       int(interval[25]),
 		}
 
+		// Files are stored in the format of FILENAME.EXT;1. This removes
+		// the ";" and converts to lowecase as filenames are uppercase by
+		// ISO 9660 standard
+		name := strings.Split(strings.ToLower(string(interval[33:33+int(interval[32])])), ";")[0]
+
 		// Set names of first two entries to . and .. for convenience
-		name := string(interval[33 : 33+int(interval[32])])
+		// This allowes for path formatting expected from a normal file
+		// system interface: "./file" and "../folder"
 		switch interval[33] {
 		case 0:
 			name = "."
@@ -121,12 +131,7 @@ func (fs *FileSystem) ReadDirectory(location int) (dirs []DirectoryRecord, err e
 		dirs = append(dirs, record)
 	}
 
+	// Store directory for this location for later
+	fs.cachedDirs[location] = dirs
 	return dirs, err
-}
-
-// ReadFile writes the bytes of the file described by the given record. Returns an error
-// if the record does not describe a file. Todo: support cross sector files
-func (fs *FileSystem) ReadFile(dest []byte, record DirectoryRecord) (err error) {
-
-	return err
 }

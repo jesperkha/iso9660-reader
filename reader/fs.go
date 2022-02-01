@@ -41,8 +41,12 @@ const (
 )
 
 type FileSystem struct {
-	File       *os.File
 	Descriptor *PrimaryDescriptor
+	file       *os.File
+
+	// Keeps track of visted paths and stores them to avoid loading directories
+	// more than once. Map key is the position of the first record.
+	cachedDirs map[int][]*DirectoryRecord
 }
 
 // The primary volume descriptor a collection of information on the disk file.
@@ -63,10 +67,10 @@ type PrimaryDescriptor struct {
 	VolumeIdentifier string
 }
 
-// ReadFile reads the primary descriptor from the disk. Returns a file system
+// ReadDisk reads the primary descriptor from the disk. Returns a file system
 // handler for reading the rest of the files and directories.
-func ReadFile(file *os.File) (fs *FileSystem, err error) {
-	fs = &FileSystem{File: file}
+func ReadDisk(file *os.File) (fs *FileSystem, err error) {
+	fs = &FileSystem{file: file, cachedDirs: make(map[int][]*DirectoryRecord)}
 
 	// Check for 'CD0001' identifier that is always found in the first sector
 	identifier := fs.seekFieldValue(1, 5, STR_A).(string)
@@ -97,7 +101,7 @@ func (fs *FileSystem) seekFieldValue(offset int64, length int, datatype int) int
 
 	interval := make([]byte, length)
 	// Get interval at default offset (after the reserved system area)
-	n, _ := fs.File.ReadAt(interval, sysAreaOffset+offset)
+	n, _ := fs.file.ReadAt(interval, sysAreaOffset+offset)
 	if n != length { // EOF
 		return nil
 	}

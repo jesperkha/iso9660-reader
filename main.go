@@ -17,15 +17,15 @@ func main() {
 	}
 	defer f.Close()
 
-	fs, err := reader.ReadFile(f)
+	fs, err := reader.ReadDisk(f)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	records, err := fs.FindDirectory(".")
+	file, err := fs.ReadFile("folder/myfile.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(records)
+	fmt.Println(file.String())
 }
