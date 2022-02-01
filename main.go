@@ -1,7 +1,5 @@
 package main
 
-// https://wiki.osdev.org/ISO_9660
-
 import (
 	"fmt"
 	"log"
@@ -9,6 +7,8 @@ import (
 
 	"github.com/jesperkha/iso-reader/reader"
 )
+
+// https://wiki.osdev.org/ISO_9660
 
 func main() {
 	f, err := os.Open("output.iso")
@@ -22,5 +22,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(fs.Descriptor)
+	records, err := fs.FindDirectory(".")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(records)
 }
