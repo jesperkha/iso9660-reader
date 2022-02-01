@@ -7,4 +7,3 @@ const (
 	// Size of reserved boot information before primary descriptor
 	sysAreaOffset = 32 * kilobyte
 )
-

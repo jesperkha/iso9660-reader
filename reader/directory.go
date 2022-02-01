@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrNotADirectory = errors.New("sector does not contain any records")
+	ErrNotADirectory     = errors.New("sector does not contain any records")
 	ErrDirectoryNotFound = errors.New("could not find directory '%s'")
 )
 
@@ -37,7 +37,7 @@ type DirectoryRecord struct {
 // FindDirectory traverses forward through the file system to find the specified
 // record. If no record with the given name is found an error is returned. See
 // DirectoryRecord.ReadFile() for getting the file contents.
-// 
+//
 // Path must be formatted as "path/to/file.ext" or "path/to/dir". Relative or absolute
 // paths are not accepted and the target will not be found.
 func (fs *FileSystem) FindDirectory(path string) (dirs []DirectoryRecord, err error) {
@@ -78,7 +78,7 @@ func (fs *FileSystem) FindDirectory(path string) (dirs []DirectoryRecord, err er
 // the ./ and ../ entries. Todo: allow multi-sector records
 func (fs *FileSystem) ReadDirectory(location int) (dirs []DirectoryRecord, err error) {
 	sector := make([]byte, blockSize)
-	_, err = fs.File.ReadAt(sector, int64(location * blockSize))
+	_, err = fs.File.ReadAt(sector, int64(location*blockSize))
 	if err != nil {
 		return dirs, err
 	}
@@ -95,21 +95,21 @@ func (fs *FileSystem) ReadDirectory(location int) (dirs []DirectoryRecord, err e
 		if length == 0 { // end of records
 			break
 		}
-		
+
 		// Get record interval and increment index
-		interval := sector[index:index+length]
+		interval := sector[index : index+length]
 		index += length
 
 		// Read needed field values
 		record := DirectoryRecord{
-			Size: length,
-			ExtentPos: int(binary.LittleEndian.Uint32(interval[2:6])),
+			Size:       length,
+			ExtentPos:  int(binary.LittleEndian.Uint32(interval[2:6])),
 			ExtentSize: int(binary.LittleEndian.Uint32(interval[10:14])),
-			Flag: int(interval[25]),
+			Flag:       int(interval[25]),
 		}
 
 		// Set names of first two entries to . and .. for convenience
-		name := string(interval[33:33+int(interval[32])])
+		name := string(interval[33 : 33+int(interval[32])])
 		switch interval[33] {
 		case 0:
 			name = "."
