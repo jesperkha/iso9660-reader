@@ -21,8 +21,11 @@ var (
 // the other is the "../" path, in that order.
 type DirectoryRecord struct {
 	// Size of this record in bytes
-	Size int
-	Flag int
+	Size   int
+	Flag   int
+	IsFile bool
+
+	Date *Date
 
 	// Name of directory or file.
 	// Filenames are formatted as FILENAME.EXT;VERSION
@@ -47,6 +50,11 @@ func (fs *FileSystem) ReadDirectory(path string) (dirs []*DirectoryRecord, err e
 	location := rootPos // keep track of current sector
 
 	for _, dirname := range pathSplit {
+		// Allow search for just /
+		if dirname == "" {
+			dirname = "."
+		}
+
 		// Check records to match dirname and continue to subfolder
 		dirs, err = fs.readDirectoryRecords(location)
 		if err != nil {
@@ -112,10 +120,24 @@ func (fs *FileSystem) readDirectoryRecords(location int) (dirs []*DirectoryRecor
 			Flag:       int(interval[25]),
 		}
 
+		record.Date = &Date{
+			int(interval[18]),
+			int(interval[19]),
+			int(interval[20]),
+			int(interval[21]),
+			int(interval[22]),
+		}
+
 		// Files are stored in the format of FILENAME.EXT;1. This removes
 		// the ";" and converts to lowecase as filenames are uppercase by
 		// ISO 9660 standard
-		name := strings.Split(strings.ToLower(string(interval[33:33+int(interval[32])])), ";")[0]
+		fullname := string(interval[33 : 33+int(interval[32])])
+		split := strings.Split(strings.ToLower(fullname), ";")
+		if len(split) > 1 {
+			record.IsFile = true
+		}
+
+		name := split[0]
 
 		// Set names of first two entries to . and .. for convenience
 		// This allowes for path formatting expected from a normal file

@@ -1,0 +1,6 @@
+commands:
+    exit            exit program
+    help            what you are reading now
+    ls              list directory contents
+    cd [path]       change directory
+    get [file]      extract a file. keeps the filename

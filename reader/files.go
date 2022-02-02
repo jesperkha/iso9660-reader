@@ -1,6 +1,14 @@
 package reader
 
-import "strings"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+var (
+	ErrFileNotFound = errors.New("could not find file '%s'")
+)
 
 // A File is a struct that describes the data found at the extent location
 // of a directory record. No files are read by reading a directory and
@@ -36,6 +44,10 @@ func (fs *FileSystem) ReadFile(path string) (file *File, err error) {
 			record = r
 			break
 		}
+	}
+
+	if record == nil {
+		return file, fmt.Errorf(ErrFileNotFound.Error(), path)
 	}
 
 	// Read file
