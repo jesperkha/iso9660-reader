@@ -15,6 +15,7 @@ import (
 
 var (
 	ErrExpectedFilename = errors.New("expected filename")
+	ErrUnknownCommand   = errors.New("unknown command. use 'help' to view a list of commands")
 
 	//go:embed help.txt
 	helpMessage string
@@ -26,6 +27,7 @@ var (
 // Also allows to extract a file from the disk with the "get" command.
 func RunTerminalMode(fs *reader.FileSystem) {
 	currentDir := []string{""}
+	fmt.Println("type 'exit' to terminate session")
 
 	for {
 		path := strings.Join(currentDir, "/")
@@ -153,7 +155,7 @@ func runCommand(fs *reader.FileSystem, dir []string, command string, args []stri
 		return dir, err
 	}
 
-	return dir, err
+	return dir, ErrUnknownCommand
 }
 
 // Formats file size to nearest thousand
