@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -152,6 +153,11 @@ func (fs *FileSystem) readDirectoryRecords(location int) (dirs []*DirectoryRecor
 		record.Name = name
 		dirs = append(dirs, record)
 	}
+
+	// Sort records so that directory records come before file records
+	sort.Slice(dirs, func(i, j int) bool {
+		return !dirs[i].IsFile
+	})
 
 	// Store directory for this location for later
 	fs.cachedDirs[location] = dirs

@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -12,18 +13,23 @@ import (
 	"github.com/jesperkha/iso-reader/reader"
 )
 
-//go:embed help.txt
-var helpMessage string
-var scanner = bufio.NewScanner(os.Stdin)
+var (
+	ErrExpectedFilename = errors.New("expected filename")
 
-// Runs a simple cli program to navigate around the disk and open text files.
+	//go:embed help.txt
+	helpMessage string
+	scanner     = bufio.NewScanner(os.Stdin)
+	writer      = tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
+)
+
+// Runs a simple cli program to navigate around the disk and open files.
 // Also allows to extract a file from the disk with the "get" command.
 func RunTerminalMode(fs *reader.FileSystem) {
 	currentDir := []string{""}
-	writer := tabwriter.NewWriter(os.Stdout, 1, 1, 1, '	', 0)
 
 	for {
 		path := strings.Join(currentDir, "/")
+
 		ct.Foreground(ct.Blue, true)
 		fmt.Print("\niso-reader ")
 		ct.Foreground(ct.Green, false)
@@ -45,85 +51,109 @@ func RunTerminalMode(fs *reader.FileSystem) {
 			continue
 		}
 
-		if command == "ls" {
-			dirs, err := fs.ReadDirectory(path)
-			if err != nil {
-				printError(err.Error())
-				continue
-			}
-
-			totalSize := 0
-			for _, d := range dirs {
-				slash := "/"
-				if d.IsFile {
-					slash = ""
-				}
-
-				totalSize += d.ExtentSize
-				extentSize := formatFileSize(d.ExtentSize)
-				date, time := d.Date.FormatDate(), d.Date.FormatTime()
-				fmt.Fprintf(writer, "%s %s %s %s%s\n", extentSize, date, time, d.Name, slash)
-			}
-
-			fmt.Printf("total %s\n", formatFileSize(totalSize))
-			writer.Flush()
-			continue
+		newDir, err := runCommand(fs, currentDir, command, args[1:])
+		if err != nil {
+			printError(err.Error())
 		}
 
-		if command == "cd" {
-			if len(args) == 1 {
-				currentDir = []string{""}
-				continue
-			}
-
-			path := strings.Split(args[1], "/")
-			for _, p := range path {
-				switch p {
-				case ".":
-					continue
-				case "..":
-					if len(currentDir) > 1 {
-						currentDir = currentDir[:len(currentDir)-1]
-					}
-					continue
-				}
-
-				newPath := append(currentDir, p)
-				if _, err := fs.ReadDirectory(strings.Join(newPath, "/")); err != nil {
-					printError(err.Error())
-					continue
-				}
-
-				currentDir = newPath
-			}
-
-			continue
-		}
-
-		if command == "open" {
-			if len(args) == 1 {
-				printError("expected filename after 'open'")
-				continue
-			}
-
-			filepath := fmt.Sprintf("%s/%s", strings.Join(currentDir, "/"), args[1])
-			file, err := fs.ReadFile(filepath)
-			if err != nil {
-				printError(err.Error())
-				continue
-			}
-
-			fmt.Println(file.String())
-			continue
-		}
-
-		if command == "get" {
-			printError("not implemented yet")
-			continue
-		}
-
-		printError("error: uknown command")
+		currentDir = newDir
 	}
+}
+
+func runCommand(fs *reader.FileSystem, dir []string, command string, args []string) (newDir []string, err error) {
+	path := strings.Join(dir, "/")
+
+	if command == "ls" {
+		dirs, err := fs.ReadDirectory(path)
+		if err != nil {
+			return dir, err
+		}
+
+		totalSize := 0
+		for _, d := range dirs {
+			// Both the . and .. directory should be hidden
+			if d.Name == "." || d.Name == ".." {
+				continue
+			}
+
+			slash := "/"
+			if d.IsFile {
+				slash = ""
+			}
+
+			totalSize += d.ExtentSize
+			extentSize := formatFileSize(d.ExtentSize)
+			date, time := d.Date.FormatDate(), d.Date.FormatTime()
+			fmt.Fprintf(writer, "%s \t %s \t %s \t %s%s \n", extentSize, date, time, d.Name, slash)
+		}
+
+		fmt.Printf("total %s\n", formatFileSize(totalSize))
+		writer.Flush()
+	}
+
+	if command == "cd" {
+		if len(args) == 0 {
+			return []string{""}, err
+		}
+
+		path := strings.Split(args[0], "/")
+		for _, p := range path {
+			switch p {
+			case ".":
+				continue
+			case "..":
+				if len(dir) > 1 {
+					dir = (dir)[:len(dir)-1]
+				}
+				continue
+			}
+
+			newPath := append(dir, p)
+			if _, err := fs.ReadDirectory(strings.Join(newPath, "/")); err != nil {
+				return dir, err
+			}
+
+			dir = newPath
+		}
+	}
+
+	if command == "open" {
+		if len(args) == 0 {
+			return dir, ErrExpectedFilename
+		}
+
+		filepath := fmt.Sprintf("%s/%s", strings.Join(dir, "/"), args[0])
+		file, err := fs.ReadFile(filepath)
+		if err != nil {
+			return dir, err
+		}
+
+		fmt.Println(file.String())
+	}
+
+	// Extract a file from the disk. Keeps the files name
+	if command == "get" {
+		if len(args) == 0 {
+			return dir, ErrExpectedFilename
+		}
+
+		filepath := fmt.Sprintf("%s/%s", strings.Join(dir, "/"), args[0])
+		file, err := fs.ReadFile(filepath)
+		if err != nil {
+			return dir, err
+		}
+
+		output, err := os.Create(file.Name)
+		if err != nil {
+			return dir, err
+		}
+
+		defer output.Close()
+		_, err = output.Write(file.Bytes)
+		return dir, err
+	}
+
+	return dir, err
 }
 
 // Formats file size to nearest thousand

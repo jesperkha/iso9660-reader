@@ -16,7 +16,7 @@ var (
 
 // Returns the date formatted as "15 Jan 1980"
 func (d *Date) FormatDate() string {
-	return fmt.Sprintf("%d %s %d", d.day, months[d.month], d.year+1900)
+	return fmt.Sprintf("%d %s %d", d.day, months[d.month-1], d.year+1900)
 }
 
 // Returns the time formatted as "16:30"
