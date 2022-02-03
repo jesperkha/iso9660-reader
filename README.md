@@ -1,7 +1,7 @@
 <br>
 <div align="center">
-  <h2 align="center">iso9666-reader</h2>
-  <p align="center">Small CLI program for traversing a disk image and extracting files.</p>
+  <h1 align="center">iso9666-reader</h1>
+  <h3 align="center">Small CLI program for traversing a disk image and extracting files.</h3>
 </div>
 <br>
 
@@ -9,7 +9,7 @@
 
 ISO 9660 is the standard file system for CD-ROMs. It is also widely used on DVD and BD media and may as well be present on USB sticks or hard disks. This program allows you to traverse the file system with a simple command line interface. You can also extract files from the disk.
 
-<img src=".github/example.gif" alt="Example GIF" width="120">
+<img src=".github/example.gif" alt="Example GIF" width="500">
 
 <br>
 
