@@ -9,6 +9,10 @@
 
 ISO 9660 is the standard file system for CD-ROMs. It is also widely used on DVD and BD media and may as well be present on USB sticks or hard disks. This program allows you to traverse the file system with a simple command line interface. You can also extract files from the disk.
 
+<br>
+
+### Demo
+
 <img src=".github/example.gif" alt="Example GIF" width="500">
 
 <br>
