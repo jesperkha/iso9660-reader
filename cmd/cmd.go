@@ -91,6 +91,7 @@ func runCommand(fs *reader.FileSystem, dir []string, command string, args []stri
 
 		fmt.Printf("total %s\n", formatFileSize(totalSize))
 		writer.Flush()
+		return dir, err
 	}
 
 	if command == "cd" {
@@ -117,6 +118,8 @@ func runCommand(fs *reader.FileSystem, dir []string, command string, args []stri
 
 			dir = newPath
 		}
+
+		return dir, err
 	}
 
 	if command == "open" {
@@ -131,6 +134,7 @@ func runCommand(fs *reader.FileSystem, dir []string, command string, args []stri
 		}
 
 		fmt.Println(file.String())
+		return dir, err
 	}
 
 	// Extract a file from the disk. Keeps the files name
