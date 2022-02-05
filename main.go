@@ -9,7 +9,6 @@ import (
 	"github.com/jesperkha/iso-reader/reader"
 )
 
-// https://wiki.osdev.org/ISO_9660
 
 func main() {
 	if len(os.Args) == 1 {
